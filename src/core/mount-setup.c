@@ -70,6 +70,8 @@ typedef struct MountPoint {
 #define N_EARLY_MOUNT 4
 #endif
 
+static bool is_early_feature_enabled = false;
+
 static const MountPoint mount_table[] = {
         { "sysfs",       "/sys",                      "sysfs",      NULL,                      MS_NOSUID|MS_NOEXEC|MS_NODEV,
           NULL,          MNT_FATAL|MNT_IN_CONTAINER },
@@ -153,6 +155,9 @@ static int mount_one(const MountPoint *p, bool relabel) {
         assert(p);
 
         if (p->condition_fn && !p->condition_fn())
+                return 0;
+        // In early case, we /run will be mounted by early program
+        if ((0 == strcmp_ptr(p->where, "/run")) && is_early_feature_enabled)
                 return 0;
 
         /* Relabel first, just in case */
@@ -358,6 +363,8 @@ static int nftw_cb(
 
 int mount_setup(bool loaded_policy) {
         int r = 0;
+
+        is_early_feature_enabled = (access("/run/platform/weston", F_OK) == 0);
 
         r = mount_points_setup(ELEMENTSOF(mount_table), loaded_policy);
 

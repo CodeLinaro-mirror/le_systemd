@@ -50,6 +50,8 @@
 #include "user-util.h"
 #include "util.h"
 
+#define DISPLAY_XDG_RUNTIME_DIR    "/run/platform/weston/"
+
 int user_new(User **out, Manager *m, uid_t uid, gid_t gid, const char *name) {
         _cleanup_(user_freep) User *u = NULL;
         char lu[DECIMAL_STR_MAX(uid_t) + 1];
@@ -366,6 +368,15 @@ static int user_mkdir_runtime_path(User *u) {
                                 log_error_errno(r, "Failed to change runtime directory ownership and mode: %m");
                                 goto fail;
                         }
+                }
+
+                /*
+                 * When user login, weston socket may not be ready, so we must use bind here
+                 */
+                if (-1 != access(DISPLAY_XDG_RUNTIME_DIR, F_OK)) {
+                        r = mount(DISPLAY_XDG_RUNTIME_DIR, u->runtime_path, NULL, MS_BIND, NULL);
+                } else {
+                        log_error_errno(r, "Failed to find weston socket under %s, ignoring:%m", DISPLAY_XDG_RUNTIME_DIR);
                 }
 
                 r = label_fix(u->runtime_path, false, false);
