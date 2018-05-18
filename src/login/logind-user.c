@@ -50,7 +50,8 @@
 #include "user-util.h"
 #include "util.h"
 
-#define DISPLAY_XDG_RUNTIME_DIR    "/run/platform/weston/"
+#define DISPLAY_XDG_RUNTIME_DIR       "/run/platform/weston/"
+#define DISPLAY_XDG_RUNTIME_SOCKET    "/run/platform/weston/wayland-0"
 
 int user_new(User **out, Manager *m, uid_t uid, gid_t gid, const char *name) {
         _cleanup_(user_freep) User *u = NULL;
@@ -371,12 +372,30 @@ static int user_mkdir_runtime_path(User *u) {
                 }
 
                 /*
-                 * When user login, weston socket may not be ready, so we must use bind here
+                 * Check if weston socket dir is fixed.
                  */
                 if (-1 != access(DISPLAY_XDG_RUNTIME_DIR, F_OK)) {
-                        r = mount(DISPLAY_XDG_RUNTIME_DIR, u->runtime_path, NULL, MS_BIND, NULL);
+                        /*
+                         * Bind will bring /run/user/uid to be owned by display,
+                         * pulseaudio will be failed because of this.
+                         * use symlink instead
+                         */
+                        int retry = 50;
+                        while (-1 != access(DISPLAY_XDG_RUNTIME_SOCKET, F_OK) && --retry > 0) {
+                                usleep(100 * USEC_PER_MSEC);
+                        }
+                        if (retry < 0)
+                                log_error_errno(r, "Unable to find weston socket under %s :%m", DISPLAY_XDG_RUNTIME_DIR);
+
+                        char socket_path[50];
+                        memset(socket_path, 0, sizeof(socket_path));
+                        snprintf(socket_path, sizeof(socket_path) - 1, "%s/wayland-0", u->runtime_path);
+                        r= symlink(DISPLAY_XDG_RUNTIME_SOCKET, socket_path);
+                        if (r < 0 && r != -EEXIST) {
+                                log_error_errno(r, "Unable to symlink %s to %s :%m", DISPLAY_XDG_RUNTIME_SOCKET, socket_path);
+                        }
                 } else {
-                        log_error_errno(r, "Failed to find weston socket under %s, ignoring:%m", DISPLAY_XDG_RUNTIME_DIR);
+                        log_error_errno(r, "Unable to find weston socket under %s, ignoring:%m", DISPLAY_XDG_RUNTIME_DIR);
                 }
 
                 r = label_fix(u->runtime_path, false, false);
