@@ -381,7 +381,7 @@ static int user_mkdir_runtime_path(User *u) {
                          * use symlink instead
                          */
                         int retry = 50;
-                        while (-1 != access(DISPLAY_XDG_RUNTIME_SOCKET, F_OK) && --retry > 0) {
+                        while (0 != access(DISPLAY_XDG_RUNTIME_SOCKET, F_OK) && --retry > 0) {
                                 usleep(100 * USEC_PER_MSEC);
                         }
                         if (retry < 0)
