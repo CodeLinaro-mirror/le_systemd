@@ -62,7 +62,7 @@ enum {
 static bool arg_skip = false;
 static bool arg_force = false;
 static bool arg_show_progress = false;
-static const char *arg_repair = "-a";
+static const char *arg_repair = "-y";
 
 static void start_target(const char *target, const char *mode) {
         _cleanup_(sd_bus_error_free) sd_bus_error error = SD_BUS_ERROR_NULL;
