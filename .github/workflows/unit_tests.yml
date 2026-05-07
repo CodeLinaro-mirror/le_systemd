@@ -30,7 +30,7 @@ jobs:
             cryptolib: gcrypt
     steps:
       - name: Repository checkout
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Install build dependencies
         run: sudo -E .github/workflows/unit_tests.sh SETUP
       - name: Build & test (${{ matrix.run_phase }}-${{ matrix.cryptolib }})
